@@ -33,6 +33,7 @@ def parse_config(config): # input json
         NAME = config['outputName']
     return
 
+
 def extract_logs(file):
     start_logs_list = []
     target_logs_list = []
@@ -113,19 +114,18 @@ def calculate_delta_time(start_time_list, start_text_list, targe_timelist, targe
 
         link_values_list.append([None,None,None])
 
-    """
-    TODO: separate excel output in different function
-    """
-    df = pd.DataFrame(link_values_list,columns=['Time', 'Log', 'Delta'])
+    return link_values_list
+
+
+def export_to_excel(link_values_list):
+    data_frame = pd.DataFrame(link_values_list,columns=['Time', 'Log', 'Delta'])
 
     if os.path.exists(PATH+"/"+NAME+".xlsx"):
-        df.to_excel(PATH+"/"+NAME+"_"+datetime.now().strftime("%d-%m-%y_%H_%M_%S")+".xlsx",
-                    sheet_name=datetime.now().strftime("%d-%m-%y_%H_%M_%S"))
+        data_frame.to_excel(PATH+"/"+NAME+"_"+datetime.now().strftime("%d-%m-%y_%H_%M_%S")+".xlsx",
+                            sheet_name=datetime.now().strftime("%d-%m-%y_%H_%M_%S"))
     else:
-        df.to_excel(PATH+"/"+NAME+".xlsx",
-                    sheet_name=datetime.now().strftime("%d-%m-%y_%H_%M_%S"))
-
-    return
+        data_frame.to_excel(PATH+"/"+NAME+".xlsx",
+                            sheet_name=datetime.now().strftime("%d-%m-%y_%H_%M_%S"))
 
 
 def main(argv1, argv2):
@@ -137,7 +137,8 @@ def main(argv1, argv2):
     start, target = extract_logs(logs)
     start_time, start_text = parse_time(start)
     targe_time, target_text = parse_time(target)
-    calculate_delta_time(start_time, start_text, targe_time, target_text)
+    result = calculate_delta_time(start_time, start_text, targe_time, target_text)
+    export_to_excel(result)
 
     sys.exit(0)
 
