@@ -5,110 +5,127 @@ import os
 from datetime import datetime
 import pandas as pd
 
-timeFormat = "%Y-%m-%d %H:%M:%S.%f"
-splitChar = "-"
-path = "."
-name = "out"
-searchList = []
+TIME_FORMAT = "%Y-%m-%d %H:%M:%S.%f"
+SPLIT_CHAR = "-"
+PATH = "."
+NAME = "out"
+SEARCH_LIST = []
+"""
+TODO: accessors for globals
+TODO: doc functions
+"""
 
-def ParseConfig(config): # input json
-    global timeFormat, splitChar, searchList, name, path
+def parse_config(config): # input json
+    global TIME_FORMAT, SPLIT_CHAR, SEARCH_LIST, NAME, PATH
     if 'timestampFormat' in config:
-        timeFormat = config['timestampFormat']
+        TIME_FORMAT = config['timestampFormat']
     if 'splitCharacter' in config:
-        splitChar = config['splitCharacter']
+        SPLIT_CHAR = config['splitCharacter']
     """
     TODO: Support delta time between same trace
     """
     if 'timeBetween' in config:
-        searchList = config['timeBetween']
+        SEARCH_LIST = config['timeBetween']
     if 'outputPath' in config:
-        path = config['outputPath']
+        PATH = config['outputPath']
     if 'outputName' in config:
-        name = config['outputName']
+        NAME = config['outputName']
     return
 
-def extractLogs(file):
-    startLogsList = []
-    targetLogsList = []
-    for searchItem in searchList:
-        startLogs = []
-        targetLogs = []
+def extract_logs(file):
+    start_logs_list = []
+    target_logs_list = []
+    for search_item in SEARCH_LIST:
+        start_logs = []
+        target_logs = []
 
         while True:
             line = file.readline()
             if not line: # EOF
                 break
-            if searchItem[0]['text'] in line:
-                startLogs.append(line)
-            if searchItem[1]['text'] in line:
-                targetLogs.append(line)
+            if search_item[0]['text'] in line:
+                start_logs.append(line)
+            if search_item[1]['text'] in line:
+                target_logs.append(line)
 
         file.seek(0) #return to beginning of file
-        startLogsList.append(startLogs)
-        targetLogsList.append(targetLogs)
+        start_logs_list.append(start_logs)
+        target_logs_list.append(target_logs)
 
-    return startLogsList, targetLogsList
+    return start_logs_list, target_logs_list
 
 
-def parseTime(logslist):
-    global splitChar, timeFormat
-    timeList = []
-    textList = []
+def parse_time(logs_list):
+    global SPLIT_CHAR, TIME_FORMAT
+    time_list = []
+    text_list = []
 
-    for list in logslist:
-        timeLog = []
-        textLog = []
-        for log in list:
+    for log_list in logs_list:
+        time_log = []
+        text_log = []
+        for log in log_list:
             """
             TODO: Improve timestamp detection
             here it's assumed timestamp is at beginning of line.
             """
-            timestamp, text = log.split(splitChar, 1)
-            timeLog.append(datetime.strptime(timestamp, timeFormat))
-            textLog.append(text)
-        timeList.append(timeLog)
-        textList.append(textLog)
+            timestamp, text = log.split(SPLIT_CHAR, 1)
+            time_log.append(datetime.strptime(timestamp, TIME_FORMAT))
+            text_log.append(text)
+        time_list.append(time_log)
+        text_list.append(text_log)
 
-    return timeList, textList
+    return time_list, text_list
 
 
-def calculateDeltaTime(startTimeList, startTextList, targetTimeList, targetTextList):
-    linkValuesList = []
+def calculate_delta_time(start_time_list, start_text_list, targe_timelist, target_text_list):
+    link_values_list = []
 
-    for (startList, startText, targetList, targetText) in zip(startTimeList, startTextList, targetTimeList, targetTextList):
-        startLen = len(startList)
-        targetLen = len(targetList)
-        startIndex = 0
-        targetIndex = 0
+    for (start_list, start_text, target_list, target_text) in zip(start_time_list, start_text_list, targe_timelist, target_text_list):
+        start_len = len(start_list)
+        target_len = len(target_list)
+        start_index = 0
+        target_index = 0
 
-        while startIndex < startLen or targetIndex < targetLen:
-            if targetIndex < targetLen:
-                if startIndex < startLen:
-                    if startList[startIndex] < targetList[targetIndex]:
-                        linkValuesList.append([str(startList[startIndex]), startText[startIndex], str(targetList[targetIndex]-startList[startIndex])])
-                        startIndex += 1
+        while start_index < start_len or target_index < target_len:
+            if target_index < target_len:
+                if start_index < start_len:
+                    if start_list[start_index] < target_list[target_index]:
+                        link_values_list.append([str(start_list[start_index]),
+                                                    start_text[start_index],
+                                                    str(target_list[target_index]-start_list[start_index])])
+                        start_index += 1
                     else:
-                        linkValuesList.append([str(targetList[targetIndex]), targetText[targetIndex], None])
-                        targetIndex += 1
+                        link_values_list.append([str(target_list[target_index]),
+                                                    target_text[target_index],
+                                                    None])
+                        target_index += 1
                 else:
-                    linkValuesList.append([str(targetList[targetIndex]), targetText[targetIndex], None])
-                    targetIndex += 1
+                    link_values_list.append([str(target_list[target_index]),
+                                                target_text[target_index],
+                                                None])
+                    target_index += 1
             else:
-                linkValuesList.append([str(startList[startIndex]), startText[startIndex], None])
-                startIndex += 1
+                link_values_list.append([str(start_list[start_index]),
+                                            start_text[start_index],
+                                            None])
+                start_index += 1
 
-        linkValuesList.append([None,None,None])
+        link_values_list.append([None,None,None])
 
     """
     TODO: separate excel output in different function
     """
-    df = pd.DataFrame(linkValuesList,columns=['Time', 'Log', 'Delta'])
+    df = pd.DataFrame(link_values_list,columns=['Time', 'Log', 'Delta'])
 
-    if os.path.exists(path+"/"+name+".xlsx"):
-        df.to_excel(path+"/"+name+"_"+datetime.now().strftime("%d-%m-%y_%H_%M_%S")+".xlsx", sheet_name=datetime.now().strftime("%d-%m-%y_%H_%M_%S"))
+    """"
+    TODO: Must verify PATH also
+    """
+    if os.path.exists(PATH+"/"+NAME+".xlsx"):
+        df.to_excel(PATH+"/"+NAME+"_"+datetime.now().strftime("%d-%m-%y_%H_%M_%S")+".xlsx",
+                    sheet_name=datetime.now().strftime("%d-%m-%y_%H_%M_%S"))
     else:
-        df.to_excel(path+"/"+name+".xlsx", sheet_name=datetime.now().strftime("%d-%m-%y_%H_%M_%S"))
+        df.to_excel(PATH+"/"+NAME+".xlsx",
+                    sheet_name=datetime.now().strftime("%d-%m-%y_%H_%M_%S"))
 
     return
 
@@ -116,13 +133,13 @@ def calculateDeltaTime(startTimeList, startTextList, targetTimeList, targetTextL
 def main(argv1, argv2):
     logs = open(argv1, 'r')
     config = open(argv2, 'r').read()
-    configJson = json.loads(config)
-    ParseConfig(configJson)
+    config_json = json.loads(config)
+    parse_config(config_json)
     # using lists instead of dictionnaries because they don't allow duplicates
-    start, target = extractLogs(logs)
-    startTime, startText = parseTime(start)
-    targetTime, targetText = parseTime(target)
-    calculateDeltaTime(startTime, startText, targetTime, targetText)
+    start, target = extract_logs(logs)
+    start_time, start_text = parse_time(start)
+    targe_time, target_text = parse_time(target)
+    calculate_delta_time(start_time, start_text, targe_time, target_text)
 
     sys.exit(0)
 
