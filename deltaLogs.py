@@ -27,7 +27,8 @@ def parse_config(config): # input json
     if 'timeBetween' in config:
         SEARCH_LIST = config['timeBetween']
     if 'outputPath' in config:
-        PATH = config['outputPath']
+        if os.path.exists(config['outputPath']):
+            PATH = config['outputPath']
     if 'outputName' in config:
         NAME = config['outputName']
     return
@@ -117,9 +118,6 @@ def calculate_delta_time(start_time_list, start_text_list, targe_timelist, targe
     """
     df = pd.DataFrame(link_values_list,columns=['Time', 'Log', 'Delta'])
 
-    """"
-    TODO: Must verify PATH also
-    """
     if os.path.exists(PATH+"/"+NAME+".xlsx"):
         df.to_excel(PATH+"/"+NAME+"_"+datetime.now().strftime("%d-%m-%y_%H_%M_%S")+".xlsx",
                     sheet_name=datetime.now().strftime("%d-%m-%y_%H_%M_%S"))
